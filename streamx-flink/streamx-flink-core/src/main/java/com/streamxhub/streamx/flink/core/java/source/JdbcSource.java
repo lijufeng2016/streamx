@@ -47,8 +47,8 @@ public class JdbcSource<T> {
     /**
      * 允许手动指定一个jdbc的连接信息
      *
-     * @param jdbc
-     * @return
+     * @param jdbc: jdbc connection info
+     * @return JdbcSource: JdbcSource
      */
     public JdbcSource<T> jdbc(Properties jdbc) {
         this.jdbc = jdbc;
@@ -64,8 +64,8 @@ public class JdbcSource<T> {
                                              SQLResultFunction<T> resultFunction,
                                              RunningFunction runningFunc) {
 
-        Utils.require(queryFunction != null, "queryFunction must be not null");
-        Utils.require(resultFunction != null, "resultFunction must be not null");
+        Utils.require(queryFunction != null, "queryFunction must not be null");
+        Utils.require(resultFunction != null, "resultFunction must not be null");
         this.jdbc = this.jdbc == null ? ConfigUtils.getJdbcConf(context.parameter().toMap(), alias) : this.jdbc;
         JdbcSourceFunction<T> sourceFunction = new JdbcSourceFunction<>(jdbc, queryFunction, resultFunction, runningFunc, null);
         return context.getJavaEnv().addSource(sourceFunction);

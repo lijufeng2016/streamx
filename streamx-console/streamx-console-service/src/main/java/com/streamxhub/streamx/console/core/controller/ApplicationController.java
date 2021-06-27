@@ -18,6 +18,7 @@ package com.streamxhub.streamx.console.core.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.streamxhub.streamx.common.util.HadoopUtils;
+import com.streamxhub.streamx.common.util.Utils;
 import com.streamxhub.streamx.console.base.domain.RestRequest;
 import com.streamxhub.streamx.console.base.domain.RestResponse;
 import com.streamxhub.streamx.console.base.exception.ServiceException;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
@@ -125,9 +127,14 @@ public class ApplicationController {
     @PostMapping("start")
     @RequiresPermissions("app:start")
     public RestResponse start(Application app) throws Exception {
-        applicationService.starting(app);
-        boolean started = applicationService.start(app, false);
-        return RestResponse.create().data(started);
+        boolean success = applicationService.checkStart(app);
+        if (success) {
+            applicationService.starting(app);
+            boolean started = applicationService.start(app, false);
+            return RestResponse.create().data(started ? 1 : 0);
+        } else {
+            return RestResponse.create().data(-1);
+        }
     }
 
     @PostMapping("clean")
@@ -204,11 +211,23 @@ public class ApplicationController {
         return RestResponse.create().data(deleted);
     }
 
+    @PostMapping("checkjar")
+    public RestResponse checkjar(String jar) {
+        File file = new File(jar);
+        try {
+            Utils.checkJarFile(file.toURI().toURL());
+            return RestResponse.create().data(true);
+        } catch (IOException e) {
+            return RestResponse.create().data(file).message(e.getLocalizedMessage());
+        }
+    }
+
     @PostMapping("upload")
     @RequiresPermissions("app:create")
     public RestResponse upload(MultipartFile file) throws IOException {
         boolean upload = applicationService.upload(file);
         return RestResponse.create().data(upload);
     }
+
 
 }

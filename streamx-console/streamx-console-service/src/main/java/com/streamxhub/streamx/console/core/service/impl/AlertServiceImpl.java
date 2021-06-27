@@ -27,6 +27,7 @@ import com.streamxhub.streamx.console.core.entity.Application;
 import com.streamxhub.streamx.console.core.entity.SenderEmail;
 import com.streamxhub.streamx.console.core.enums.CheckPointStatus;
 import com.streamxhub.streamx.console.core.enums.FlinkAppState;
+import com.streamxhub.streamx.console.core.metrics.flink.MailTemplate;
 import com.streamxhub.streamx.console.core.service.AlertService;
 import com.streamxhub.streamx.console.core.service.SettingService;
 import freemarker.template.Configuration;
@@ -38,7 +39,6 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
-import java.io.Serializable;
 import java.io.StringWriter;
 import java.net.URL;
 import java.util.*;
@@ -86,48 +86,70 @@ public class AlertServiceImpl implements AlertService {
     }
 
     @Override
-    public void alert(Application application, Serializable state) {
-        String subject = "StreamX Alert: {}, %s";
-        if (state instanceof FlinkAppState) {
-            subject = String.format(subject, application.getJobName(), "checkPoint is Failed");
-        } else {
-            subject = String.format(subject, application.getJobName(), " is ".concat(((CheckPointStatus) state).name()));
-        }
-        log.info(subject);
+    public void alert(Application application, FlinkAppState appState) {
         if (this.senderEmail == null) {
             this.senderEmail = settingService.getSenderEmail();
         }
-        if (this.senderEmail != null) {
-            //发送邮件
-            if (Utils.notEmpty(application.getAlertEmail())) {
-                try {
-                    HtmlEmail htmlEmail = new HtmlEmail();
-                    htmlEmail.setCharset("UTF-8");
-                    htmlEmail.setHostName(this.senderEmail.getSmtpHost());
-                    htmlEmail.setAuthentication(this.senderEmail.getEmail(), this.senderEmail.getPassword());
-                    htmlEmail.setFrom(this.senderEmail.getEmail());
-                    if (this.senderEmail.isSsl()) {
-                        htmlEmail.setSSLOnConnect(true);
-                        htmlEmail.setSslSmtpPort(this.senderEmail.getSmtpPort().toString());
-                    }
-                    htmlEmail.setSubject(subject);
-                    String html;
-                    if (state instanceof FlinkAppState) {
-                        html = getHtmlMessage(application, (FlinkAppState) state);
-                    } else {
-                        html = getHtmlMessage(application, (CheckPointStatus) state);
-                    }
-                    htmlEmail.setHtmlMsg(html);
-                    htmlEmail.addTo(application.getAlertEmail().split(","));
-                    htmlEmail.send();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
+        if (this.senderEmail != null && Utils.notEmpty(application.getAlertEmail())) {
+            MailTemplate mail = getMailTemplate(application);
+            mail.setType(1);
+            mail.setTitle(String.format("Notify: %s %s", application.getJobName(), appState.name()));
+            mail.setStatus(appState.name());
+
+            String subject = String.format("StreamX Alert: %s %s", application.getJobName(), appState.name());
+            String[] emails = application.getAlertEmail().split(",");
+            sendEmail(mail, subject, emails);
         }
     }
 
-    private String getHtmlMessage(Application application, FlinkAppState appState) throws Exception {
+    @Override
+    public void alert(Application application, CheckPointStatus checkPointStatus) {
+        if (this.senderEmail == null) {
+            this.senderEmail = settingService.getSenderEmail();
+        }
+        if (this.senderEmail != null && Utils.notEmpty(application.getAlertEmail())) {
+            MailTemplate mail = getMailTemplate(application);
+            mail.setType(2);
+            mail.setTitle(String.format("Notify: %s checkpoint FAILED", application.getJobName()));
+
+            String subject = String.format("StreamX Alert: %s, checkPoint is Failed", application.getJobName());
+            String[] emails = application.getAlertEmail().split(",");
+            sendEmail(mail, subject, emails);
+        }
+    }
+
+    private void sendEmail(MailTemplate mail, String subject, String... mails) {
+        log.info(subject);
+        try {
+            Map<String, MailTemplate> out = new HashMap<>(16);
+            out.put("mail", mail);
+
+            StringWriter writer = new StringWriter();
+            template.process(out, writer);
+            String html = writer.toString();
+            writer.close();
+
+            HtmlEmail htmlEmail = new HtmlEmail();
+            htmlEmail.setCharset("UTF-8");
+            htmlEmail.setHostName(this.senderEmail.getSmtpHost());
+            htmlEmail.setAuthentication(this.senderEmail.getEmail(), this.senderEmail.getPassword());
+            htmlEmail.setFrom(this.senderEmail.getEmail());
+            if (this.senderEmail.isSsl()) {
+                htmlEmail.setSSLOnConnect(true);
+                htmlEmail.setSslSmtpPort(this.senderEmail.getSmtpPort().toString());
+            } else {
+                htmlEmail.setSmtpPort(this.senderEmail.getSmtpPort());
+            }
+            htmlEmail.setSubject(subject);
+            htmlEmail.setHtmlMsg(html);
+            htmlEmail.addTo(mails);
+            htmlEmail.send();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private MailTemplate getMailTemplate(Application application) {
         long duration;
         if (application.getEndTime() == null) {
             duration = System.currentTimeMillis() - application.getStartTime().getTime();
@@ -135,55 +157,22 @@ public class AlertServiceImpl implements AlertService {
             duration = application.getEndTime().getTime() - application.getStartTime().getTime();
         }
         duration = duration / 1000 / 60;
-        String content = "Job [" + application.getJobName() + "] is " + appState.name() + "<br>" +
-                "Start Time: " + DateUtils.format(application.getStartTime(), DateUtils.fullFormat(), TimeZone.getDefault()) + "<br>" +
-                "End Time: " + DateUtils.format(application.getEndTime() == null ? new Date() : application.getEndTime(), DateUtils.fullFormat(), TimeZone.getDefault()) + "<br>" +
-                "Duration: " + DateUtils.toRichTimeDuration(duration) + "<br>";
-
-        if (appState.equals(FlinkAppState.FAILED)) {
-            if (application.getRestartCount() > 0) {
-                content += "Restart: <strong><span style='color:red'>" + application.getRestartCount() + "</span>/" + application.getRestartSize() + "</strong><br><br>";
-            }
-        }
-        content += "please check it,Thank you for using StreamX<br><br>Best Wishes!!";
-
-        Map<String, String> root = new HashMap<>(3);
-        root.put("title", "Notify :" + application.getJobName().concat(" is ").concat(appState.name()));
-        root.put("message", content);
         String format = "%s/proxy/%s/";
         String url = String.format(format, HadoopUtils.getRMWebAppURL(false), application.getAppId());
-        root.put("link", url);
 
-        StringWriter writer = new StringWriter();
-        template.process(root, writer);
-        return writer.toString();
-    }
+        MailTemplate template = new MailTemplate();
+        template.setJobName(application.getJobName());
+        template.setLink(url);
+        template.setStartTime(DateUtils.format(application.getStartTime(), DateUtils.fullFormat(), TimeZone.getDefault()));
+        template.setEndTime(DateUtils.format(application.getEndTime() == null ? new Date() : application.getEndTime(), DateUtils.fullFormat(), TimeZone.getDefault()));
+        template.setDuration(DateUtils.toRichTimeDuration(duration));
+        template.setRestart(application.isNeedRestartOnFailed() && application.getRestartCount() > 0);
+        template.setRestartIndex(application.getRestartCount());
+        template.setTotalRestart(application.getRestartSize());
+        template.setCpFailureRateInterval(DateUtils.toRichTimeDuration(application.getCpFailureRateInterval()));
+        template.setCpMaxFailureInterval(application.getCpMaxFailureInterval());
 
-    private String getHtmlMessage(Application application, CheckPointStatus appState) throws Exception {
-        long duration;
-        if (application.getEndTime() == null) {
-            duration = System.currentTimeMillis() - application.getStartTime().getTime();
-        } else {
-            duration = application.getEndTime().getTime() - application.getStartTime().getTime();
-        }
-        duration = duration / 1000 / 60;
-        String content = "Job [" + application.getJobName() + "] checkPoint is " + appState.name() + "<br>" +
-                "Start Time: " + DateUtils.format(application.getStartTime(), DateUtils.fullFormat(), TimeZone.getDefault()) + "<br>" +
-                "End Time: " + DateUtils.format(application.getEndTime() == null ? new Date() : application.getEndTime(), DateUtils.fullFormat(), TimeZone.getDefault()) + "<br>" +
-                "Duration: " + DateUtils.toRichTimeDuration(duration) + "<br>";
-
-        content += "please check it,Thank you for using StreamX<br><br>Best Wishes!!";
-
-        Map<String, String> root = new HashMap<>(3);
-        root.put("title", "Notify :" + application.getJobName().concat(" checkpoint is ").concat(appState.name()));
-        root.put("message", content);
-        String format = "%s/proxy/%s/";
-        String url = String.format(format, HadoopUtils.getRMWebAppURL(false), application.getAppId());
-        root.put("link", url);
-
-        StringWriter writer = new StringWriter();
-        template.process(root, writer);
-        return writer.toString();
+        return template;
     }
 
 }

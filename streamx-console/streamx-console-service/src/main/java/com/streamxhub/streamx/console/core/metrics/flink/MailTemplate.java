@@ -18,17 +18,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.streamxhub.streamx.flink.core.scala.util
+package com.streamxhub.streamx.console.core.metrics.flink;
 
-import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
-import org.apache.flink.api.common.typeinfo.TypeInformation
-import org.apache.flink.runtime.state.FunctionInitializationContext
+import lombok.Data;
 
-object FlinkUtils {
+import java.io.Serializable;
 
-  def getUnionListState[R: TypeInformation](context: FunctionInitializationContext, descriptorName: String): ListState[R] = {
-    context.getOperatorStateStore.getUnionListState(new ListStateDescriptor(descriptorName, implicitly[TypeInformation[R]].getTypeClass))
-  }
-
-
+/**
+ * @author benjobs
+ */
+@Data
+public class MailTemplate implements Serializable {
+    private String title;
+    private String jobName;
+    private String status;
+    private Integer type;
+    private String startTime;
+    private String endTime;
+    private String duration;
+    private String link;
+    private String cpFailureRateInterval;
+    private Integer cpMaxFailureInterval;
+    private Boolean restart;
+    private Integer restartIndex;
+    private Integer totalRestart;
 }

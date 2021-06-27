@@ -8,7 +8,17 @@ INSERT INTO `t_flink_project` VALUES (1, 'streamx-quickstart', 'https://gitee.co
 -- ----------------------------
 -- Records of t_flink_app
 -- ----------------------------
-INSERT INTO `t_flink_app` VALUES (1396505407930654721, 2, 4, NULL, 'Flink SQL Demo', NULL, NULL, NULL, NULL, '{\"jobmanager.memory.process.size\":\"1024mb\",\"taskmanager.memory.process.size\":\"1024mb\",\"parallelism.default\":1,\"taskmanager.numberOfTaskSlots\":1}', 1, NULL, 1, NULL, NULL, '2', 0, NULL, NULL, NULL, 'Flink SQL Demo', 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NOW(), 0, NULL, NULL, NULL);
+INSERT INTO `t_flink_app` VALUES (1401710007170375681, 2, 4, NULL, 'Flink SQL Demo', NULL, NULL, NULL, NULL, '{\"jobmanager.memory.process.size\":\"1024mb\",\"taskmanager.memory.process.size\":\"1024mb\",\"parallelism.default\":1,\"taskmanager.numberOfTaskSlots\":1}', 1, NULL, 1, NULL, NULL, '2', 0, NULL, NULL, NULL, NULL, NULL, NULL, 'Flink SQL Demo', 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NOW(), 0, NULL, NULL, NULL);
+
+-- ----------------------------
+-- Records of t_flink_sql
+-- ----------------------------
+INSERT INTO `t_flink_sql` VALUES (1401710007208124417, 1401710007170375681, 'eNqlUUtPhDAQvu+vmFs1AYIHT5s94AaVqGxSSPZIKgxrY2mxrdGfb4GS3c0+LnJo6Mz36syapkmZQpk8vKbQMMt2KOFmAe5rK4Nf3yhrhCwvA1/TTDaqO61UxmooSprlT1PDGkgKEKpmwvIOjWVdP3W2zpG+JfQFHjfU46xxrVvYZuWztye1khJrqzSBFRCfjUwSYQiqt1xJJvyPcbWJp9WPCXvUoUEn0ZAVufcs0nIUjYn2L4s++YiY75eBLr+2Dnl3GYKTWRyfQKYRRR2XZxXmNvu9yh9GHAmUO/sxyMRkGNly4c714RZ7zaWtLHsX+N9NjvVrWxm99jmyvEhpOUhujmIYFI5zkCOYzYIj11a7QH7Tyz+nE8bw', NULL, 1, 0, NOW());
+
+-- ----------------------------
+-- Records of t_flink_effective
+-- ----------------------------
+INSERT INTO `t_flink_effective` VALUES (1401710007468171265, 1401710007170375681, 2, 1401710007208124417, NOW());
 
 -- ----------------------------
 -- Records of t_flink_tutorial
@@ -126,7 +136,7 @@ INSERT INTO `t_role_menu` VALUES (2, 34);
 -- ----------------------------
 INSERT INTO `t_setting` VALUES (1, 'env.flink.home', NULL, 'Flink Home', 'Flink Home', 1);
 INSERT INTO `t_setting` VALUES (2, 'maven.central.repository', NULL, 'Maven Central Repository', 'Maven 私服地址', 1);
-INSERT INTO `t_setting` VALUES (3, 'streamx.console.webapp.address', NULL, 'StreamX Webapp address', 'StreamX Console Web 应用程序 HTTP 端口', 1);
+INSERT INTO `t_setting` VALUES (3, 'streamx.console.webapp.address', NULL, 'StreamX Webapp address', 'StreamX Console Web 应用程序HTTP URL', 1);
 INSERT INTO `t_setting` VALUES (4, 'streamx.console.workspace', '/streamx/workspace', 'StreamX Console Workspace', 'StreamX Console 的工作空间,用于存放项目源码,编译后的项目等', 1);
 INSERT INTO `t_setting` VALUES (5, 'alert.email.host', NULL, 'Alert Email Smtp Host', '告警邮箱Smtp Host', 1);
 INSERT INTO `t_setting` VALUES (6, 'alert.email.port', NULL, 'Alert Email Smtp Port', '告警邮箱的Smtp Port', 1);

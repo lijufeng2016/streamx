@@ -126,7 +126,7 @@ trait SparkStreaming {
     val localConf = confPath.split("\\.").last match {
       case "properties" => PropertiesUtils.fromPropertiesFile(confPath)
       case "yaml" | "yml" => PropertiesUtils.fromYamlFile(confPath)
-      case _ => throw new IllegalArgumentException("[StreamX] Usage:properties-file format error,muse be properties or yml")
+      case _ => throw new IllegalArgumentException("[StreamX] Usage:properties-file format error,must be properties or yml")
     }
 
     localConf.foreach(x => sparkConf.set(x._1, x._2))
@@ -140,7 +140,7 @@ trait SparkStreaming {
     }
 
     if (appMain == null) {
-      System.err.println(s"[StreamX] $KEY_SPARK_MAIN_CLASS must be not empty!")
+      System.err.println(s"[StreamX] $KEY_SPARK_MAIN_CLASS must not be empty!")
       System.exit(1)
     }
 

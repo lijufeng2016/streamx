@@ -23,7 +23,8 @@ package com.streamxhub.streamx.common.util
 import org.yaml.snakeyaml.Yaml
 
 import java.io._
-import java.util.{Properties, Scanner, LinkedHashMap => JavaLinkedMap}
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.{Properties, Scanner, HashMap => JavaMap, LinkedHashMap => JavaLinkedMap}
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable.{Map => MutableMap}
@@ -31,7 +32,8 @@ import scala.collection.mutable.{Map => MutableMap}
 /**
  * @author benjobs
  */
-object PropertiesUtils {
+object PropertiesUtils extends Logger {
+
 
   def readFile(filename: String): String = {
     val file = new File(filename)
@@ -129,7 +131,7 @@ object PropertiesUtils {
 
   /** Load Yaml present in the given file. */
   def fromYamlFile(inputStream: InputStream): Map[String, String] = {
-    require(inputStream != null, s"Properties inputStream  must be not null")
+    require(inputStream != null, s"Properties inputStream  must not be null")
     try {
       val map = MutableMap[String, String]()
       new Yaml()
@@ -145,7 +147,7 @@ object PropertiesUtils {
 
   /** Load properties present in the given file. */
   def fromPropertiesFile(inputStream: InputStream): Map[String, String] = {
-    require(inputStream != null, s"Properties inputStream  must be not null")
+    require(inputStream != null, s"Properties inputStream  must not be null")
     try {
       val properties = new Properties()
       properties.load(inputStream)
@@ -153,6 +155,45 @@ object PropertiesUtils {
     } catch {
       case e: IOException => throw new IllegalArgumentException(s"Failed when loading properties from inputStream", e)
     }
+  }
+
+
+  /**
+   *
+   * @param file
+   * @return
+   */
+  def loadFlinkConfYaml(file: File): JavaMap[String, String] = {
+    require(file != null && file.exists() && file.isFile)
+    loadFlinkConfYaml(org.apache.commons.io.FileUtils.readFileToString(file))
+  }
+
+  def loadFlinkConfYaml(yaml: String): JavaMap[String, String] = {
+    require(yaml != null && yaml.nonEmpty)
+    val flinkConf = new JavaMap[String, String]()
+    val scanner: Scanner = new Scanner(yaml)
+    val lineNo: AtomicInteger = new AtomicInteger(0)
+    while (scanner.hasNextLine) {
+      val line = scanner.nextLine()
+      lineNo.incrementAndGet()
+      // 1. check for comments
+      val comments = line.split("#", 2)
+      val conf = comments(0).trim
+      // 2. get key and value
+      if (conf.nonEmpty) {
+        val kv = conf.split(": ", 2)
+        // skip line with no valid key-value pair
+        val key = kv(0).trim
+        val value = kv(1).trim
+        // sanity check
+        if (key.nonEmpty && value.nonEmpty) {
+          flinkConf += key -> value
+        } else {
+          logWarn(s"Error after splitting key and value in configuration ${lineNo.get()}: $line")
+        }
+      }
+    }
+    flinkConf
   }
 
 }

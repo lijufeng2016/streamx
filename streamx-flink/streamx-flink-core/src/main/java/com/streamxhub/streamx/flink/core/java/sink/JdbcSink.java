@@ -20,6 +20,7 @@
  */
 package com.streamxhub.streamx.flink.core.java.sink;
 
+import com.streamxhub.streamx.common.util.AssertUtils;
 import com.streamxhub.streamx.common.util.ConfigUtils;
 import com.streamxhub.streamx.flink.core.java.function.SQLFromFunction;
 import com.streamxhub.streamx.flink.core.scala.StreamingContext;
@@ -59,7 +60,7 @@ public class JdbcSink<T> {
     }
 
     public DataStreamSink<T> sink(DataStream<T> dataStream) {
-        assert sqlFunc != null;
+        AssertUtils.notNull(sqlFunc);
         this.jdbc = this.jdbc == null ? ConfigUtils.getJdbcConf(context.parameter().toMap(), alias) : this.jdbc;
         JdbcSinkFunction<T> sinkFun = new JdbcSinkFunction<>(this.jdbc, this.sqlFunc);
         return dataStream.addSink(sinkFun);

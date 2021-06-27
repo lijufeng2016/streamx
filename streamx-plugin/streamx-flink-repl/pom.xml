@@ -5,13 +5,20 @@
     <parent>
         <groupId>com.streamxhub.streamx</groupId>
         <artifactId>streamx-plugin</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0</version>
     </parent>
 
     <artifactId>streamx-flink-repl</artifactId>
     <name>StreamX : Flink Repl</name>
 
     <dependencies>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.1</version>
+            <scope>test</scope>
+        </dependency>
 
         <dependency>
             <groupId>org.jline</groupId>
@@ -22,7 +29,7 @@
         <dependency>
             <groupId>com.streamxhub.streamx</groupId>
             <artifactId>streamx-common</artifactId>
-            <version>1.0.0</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -79,24 +86,6 @@
             <artifactId>flink-yarn_${scala.binary.version}</artifactId>
             <version>${flink.version}</version>
             <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.flink</groupId>
-                    <artifactId>flink-shaded-hadoop2</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.hadoop</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.eclipse.jetty</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>

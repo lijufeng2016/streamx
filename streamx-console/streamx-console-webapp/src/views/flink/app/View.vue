@@ -1245,11 +1245,18 @@ export default {
               flameGraph: flameGraph,
               allowNonRestored: allowNonRestoredState
             }).then((resp) => {
-              if (!resp.data) {
+              const code = parseInt(resp.data)
+              if (code === 0) {
                 this.$swal.fire(
                   'Failed',
                   'startup failed, please check the startup log :)',
                   'error'
+                )
+              } else if (code === -1) {
+                this.$swal.fire(
+                    'Failed',
+                    'startup failed, Maybe FLINK_HOME undefined,please check :)',
+                    'error'
                 )
               }
             })
@@ -1585,7 +1592,18 @@ export default {
       const socket = new SockJS(baseUrl(true).concat('/websocket'))
       this.stompClient = Stomp.over(socket)
       this.stompClient.connect({}, (success) => {
-        this.stompClient.subscribe('/resp/mvn', (msg) => this.terminal.writeln(msg.body))
+        this.stompClient.subscribe(
+            '/resp/mvn',
+            (msg) => {
+              if(msg.body.startsWith('[Exception]')) {
+                this.$swal.fire(
+                    'Failed',
+                    msg.body,
+                    'error'
+                )
+              }
+              this.terminal.writeln(msg.body)
+            })
         this.stompClient.send('/req/mvn/' + app.id)
       })
     },

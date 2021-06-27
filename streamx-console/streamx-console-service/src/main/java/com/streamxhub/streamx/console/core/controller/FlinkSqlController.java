@@ -23,7 +23,6 @@ import com.streamxhub.streamx.console.core.entity.Application;
 import com.streamxhub.streamx.console.core.entity.FlinkSql;
 import com.streamxhub.streamx.console.core.service.FlinkSqlService;
 import com.streamxhub.streamx.flink.core.SqlError;
-import com.streamxhub.streamx.flink.core.SqlValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -48,7 +47,7 @@ public class FlinkSqlController {
 
     @PostMapping("verify")
     public RestResponse verify(String sql) {
-        SqlError sqlError = SqlValidator.verifySQL(sql);
+        SqlError sqlError = flinkSqlService.verifySql(sql);
         if (sqlError != null) {
             String[] array = sqlError.sql().trim().split("\n");
             String start = array[0].trim();
@@ -59,7 +58,6 @@ public class FlinkSqlController {
                 .data(false)
                 .message(sqlError.exception())
                 .put("type", sqlError.errorType().errorType)
-                .put("sql", sqlError.sql())
                 .put("start", start)
                 .put("end", end);
             //语法异常

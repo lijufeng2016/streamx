@@ -20,11 +20,11 @@
  */
 package com.streamxhub.streamx.console.system.controller;
 
+import com.streamxhub.streamx.common.util.DateUtils;
 import com.streamxhub.streamx.console.base.domain.RestResponse;
-import com.streamxhub.streamx.console.base.properties.StreamXProperties;
-import com.streamxhub.streamx.console.base.utils.DateUtil;
-import com.streamxhub.streamx.console.base.utils.ShaHashUtil;
-import com.streamxhub.streamx.console.base.utils.WebUtil;
+import com.streamxhub.streamx.console.base.properties.ShiroProperties;
+import com.streamxhub.streamx.console.base.util.ShaHashUtils;
+import com.streamxhub.streamx.console.base.util.WebUtils;
 import com.streamxhub.streamx.console.system.authentication.JWTToken;
 import com.streamxhub.streamx.console.system.authentication.JWTUtil;
 import com.streamxhub.streamx.console.system.entity.User;
@@ -60,36 +60,36 @@ public class PassportController {
     private RoleService roleService;
 
     @Autowired
-    private StreamXProperties properties;
+    private ShiroProperties properties;
 
     @PostMapping("signin")
     public RestResponse signin(
-        @NotBlank(message = "{required}") String username,
-        @NotBlank(message = "{required}") String password) throws Exception {
+            @NotBlank(message = "{required}") String username,
+            @NotBlank(message = "{required}") String password) throws Exception {
 
         username = StringUtils.lowerCase(username);
         User user = this.userService.findByName(username);
 
         if (user == null) {
-            return RestResponse.create().put("code",0);
+            return RestResponse.create().put("code", 0);
         }
 
         String salt = user.getSalt();
-        password = ShaHashUtil.encrypt(salt, password);
+        password = ShaHashUtils.encrypt(salt, password);
 
         if (!StringUtils.equals(user.getPassword(), password)) {
-            return RestResponse.create().put("code",0);
+            return RestResponse.create().put("code", 0);
         }
 
         if (User.STATUS_LOCK.equals(user.getStatus())) {
-            return RestResponse.create().put("code",1);
+            return RestResponse.create().put("code", 1);
         }
 
         // 更新用户登录时间
         this.userService.updateLoginTime(username);
-        String token = WebUtil.encryptToken(JWTUtil.sign(username, password));
-        LocalDateTime expireTime = LocalDateTime.now().plusSeconds(properties.getShiro().getJwtTimeOut());
-        String expireTimeStr = DateUtil.formatFullTime(expireTime);
+        String token = WebUtils.encryptToken(JWTUtil.sign(username, password));
+        LocalDateTime expireTime = LocalDateTime.now().plusSeconds(properties.getJwtTimeOut());
+        String expireTimeStr = DateUtils.formatFullTime(expireTime);
         JWTToken jwtToken = new JWTToken(token, expireTimeStr);
         String userId = RandomStringUtils.randomAlphanumeric(20);
         user.setId(userId);

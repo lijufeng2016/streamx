@@ -47,14 +47,14 @@ object SqlCommandParser extends Logger {
           if (line.trim.endsWith(";")) {
             parseLine(stmt.toString.trim) match {
               case Some(x) => calls += x
-              case _ => throw new RuntimeException(SqlError(SqlErrorType.UNSUPPORTED_SQL, sql = stmt.toString).toErrorString)
+              case _ => throw new RuntimeException(SqlError(SqlErrorType.UNSUPPORTED_SQL, exception = s"unsupported sql", sql = stmt.toString).toErrorString)
             }
             // clear string builder
             stmt.clear()
           }
         }
         calls.toList match {
-          case Nil => throw new RuntimeException(SqlError(SqlErrorType.ENDS_WITH, sql = sql).toErrorString)
+          case Nil => throw new RuntimeException(SqlError(SqlErrorType.ENDS_WITH, exception = "not ends with \";\"", sql = sql).toErrorString)
           case r => r
         }
     }
@@ -82,8 +82,8 @@ object SqlCommandParser extends Logger {
             val buffer = new StringBuffer()
             while (scanner.hasNextLine) {
               val line = scanner.nextLine().replaceAll("--(.*)$", "").trim
-              val propReg = "\\s*(.*)\\s*=(.*)(,|)\\s*"
-              if (line.matches(propReg)) {
+              val propRegexp = "\\s*(.*)\\s*=(.*)(,|)\\s*"
+              if (line.matches(propRegexp)) {
                 var newLine = line
                   .replaceAll("^'|^", "'")
                   .replaceAll("('|)\\s*=\\s*('|)", "' = '")
@@ -100,7 +100,7 @@ object SqlCommandParser extends Logger {
           }
         }
       }
-      sqlCommand.converter(groups).map(operands => SqlCommandCall(sqlCommand, operands))
+      sqlCommand.converter(groups).map(x => SqlCommandCall(sqlCommand, x))
     }
   }
 
@@ -129,9 +129,132 @@ object SqlCommand extends enumeratum.Enum[SqlCommand] {
 
   private[this] val NO_OPERANDS = (_: Array[String]) => Some(Array.empty[String])
 
+  //----CREATE Statements----
+
+  /**
+   * <pre>
+   * CREATE CATALOG catalog_name
+   * WITH (key1=val1, key2=val2, ...)
+   * </pre>
+   */
+  case object CREATE_CATALOG extends SqlCommand(
+    "create catalog",
+    "(CREATE\\s+CATALOG\\s+.*)"
+  )
+
+  /**
+   * <pre>
+   * CREATE DATABASE [IF NOT EXISTS] [catalog_name.]db_name<br>
+   * [COMMENT database_comment]<br>
+   * WITH (key1=val1, key2=val2, ...)<br>
+   * </pre>
+   */
+  case object CREATE_DATABASE extends SqlCommand(
+    "create database",
+    "(CREATE\\s+DATABASE\\s+.*)"
+  )
+
+  /**
+   * <pre>
+   * CREATE TABLE [IF NOT EXISTS] [catalog_name.][db_name.]table_name
+   * (
+   * { <physical_column_definition> | <metadata_column_definition> | <computed_column_definition> }[ , ...n]
+   * [ <watermark_definition> ]
+   * [ <table_constraint> ][ , ...n]
+   * )
+   * [COMMENT table_comment]
+   * [PARTITIONED BY (partition_column_name1, partition_column_name2, ...)]
+   * WITH (key1=val1, key2=val2, ...)
+   * [ LIKE source_table [( <like_options> )] ]
+   * </pre
+   */
+  case object CREATE_TABLE extends SqlCommand(
+    "create table",
+    "(CREATE\\s+TABLE\\s+.*)"
+  )
+
+  /**
+   * <pre>
+   * CREATE [TEMPORARY] VIEW [IF NOT EXISTS] [catalog_name.][db_name.]view_name
+   * [( columnName [, columnName ]* )] [COMMENT view_comment]
+   * AS query_expression<
+   * </pre
+   */
+  case object CREATE_VIEW extends SqlCommand(
+    "create view",
+    "CREATE\\s+VIEW\\s+(\\S+)\\s+AS\\s+(.*)", {
+      case a if a.length < 2 => None
+      case x => Some(Array[String](x.head, x.last))
+    }
+  )
+
+  /**
+   * <pre>
+   * CREATE [TEMPORARY|TEMPORARY SYSTEM] FUNCTION
+   * [IF NOT EXISTS] [catalog_name.][db_name.]function_name
+   * AS identifier [LANGUAGE JAVA|SCALA|PYTHON]
+   * </pre
+   */
+  case object CREATE_FUNCTION extends SqlCommand(
+    "create function",
+    "(CREATE\\s+FUNCTION\\s+.*)"
+  )
+
+
+  //----ALTER Statements ---
+  case object ALTER_DATABASE extends SqlCommand(
+    "alter database",
+    "(ALTER\\s+DATABASE\\s+.*)"
+  )
+
+  case object ALTER_TABLE extends SqlCommand(
+    "alter table",
+    "(ALTER\\s+TABLE\\s+.*)"
+  )
+
+  case object ALTER_FUNCTION extends SqlCommand(
+    "alter function",
+    "(ALTER\\s+FUNCTION.*)"
+  )
+
+  //----DROP Statements----
+
+  case object DROP_CATALOG extends SqlCommand(
+    "drop catalog",
+    "(DROP\\s+CATALOG\\s+.*)"
+  )
+
+  case object DROP_DATABASE extends SqlCommand(
+    "drop database",
+    "(DROP\\s+DATABASE\\s+.*)"
+  )
+
+  case object DROP_TABLE extends SqlCommand(
+    "drop table",
+    "(DROP\\s+TABLE\\s+.*)"
+  )
+
+  case object DROP_VIEW extends SqlCommand(
+    "drop view",
+    "DROP\\s+VIEW\\s+(.*)"
+  )
+
+
+  case object DROP_FUNCTION extends SqlCommand(
+    "drop function",
+    "DROP\\s+FUNCTION\\s+(.*)"
+  )
+
+  //----SHOW Statements ---
   case object SHOW_CATALOGS extends SqlCommand(
     "show catalogs",
     "SHOW\\s+CATALOGS",
+    NO_OPERANDS
+  )
+
+  case object SHOW_CURRENT_CATALOG extends SqlCommand(
+    "show current catalogs",
+    "SHOW\\s+CURRENT\\s+CATALOG",
     NO_OPERANDS
   )
 
@@ -141,9 +264,21 @@ object SqlCommand extends enumeratum.Enum[SqlCommand] {
     NO_OPERANDS
   )
 
+  case object SHOW_CURRENT_DATABASE extends SqlCommand(
+    "show current database",
+    "SHOW\\s+CURRENT\\s+DATABASE",
+    NO_OPERANDS
+  )
+
   case object SHOW_TABLES extends SqlCommand(
     "show tables",
     "SHOW\\s+TABLES",
+    NO_OPERANDS
+  )
+
+  case object SHOW_VIEWS extends SqlCommand(
+    "show views",
+    "SHOW\\s+VIEWS",
     NO_OPERANDS
   )
 
@@ -159,6 +294,26 @@ object SqlCommand extends enumeratum.Enum[SqlCommand] {
     NO_OPERANDS
   )
 
+
+  //---- INSERT Statement #
+  case object INSERT_INTO extends SqlCommand(
+    "insert into",
+    "(INSERT\\s+INTO.*)"
+  )
+
+  case object INSERT_OVERWRITE extends SqlCommand(
+    "insert overwrite",
+    "(INSERT\\s+OVERWRITE.*)"
+  )
+
+
+  //---- SELECT Statements #
+  case object SELECT extends SqlCommand(
+    "select",
+    "(SELECT.*)"
+  )
+
+  //---- USE Statements #
   case object USE_CATALOG extends SqlCommand(
     "use catalog",
     "USE\\s+CATALOG\\s+(.*)"
@@ -169,15 +324,6 @@ object SqlCommand extends enumeratum.Enum[SqlCommand] {
     "USE\\s+(?!CATALOG)(.*)"
   )
 
-  case object CREATE_CATALOG extends SqlCommand(
-    "create catalog",
-    "(CREATE\\s+CATALOG\\s+.*)"
-  )
-
-  case object DROP_CATALOG extends SqlCommand(
-    "drop catalog",
-    "(DROP\\s+CATALOG\\s+.*)"
-  )
 
   case object DESC extends SqlCommand(
     "desc",
@@ -189,91 +335,30 @@ object SqlCommand extends enumeratum.Enum[SqlCommand] {
     "DESCRIBE\\s+(.*)"
   )
 
+  /**
+   * <pre>
+   * EXPLAIN PLAN FOR <query_statement_or_insert_statement>
+   * </pre>
+   */
   case object EXPLAIN extends SqlCommand(
-    "explain",
-    "EXPLAIN\\s+(SELECT|INSERT)\\s+(.*)",
-    (x: Array[String]) => Some(Array[String](x(1), x(2)))
-  )
-
-  case object CREATE_DATABASE extends SqlCommand(
-    "create database",
-    "(CREATE\\s+DATABASE\\s+.*)"
-  )
-
-  case object DROP_DATABASE extends SqlCommand(
-    "drop database",
-    "(DROP\\s+DATABASE\\s+.*)"
-  )
-
-  case object ALTER_DATABASE extends SqlCommand(
-    "alter database",
-    "(ALTER\\s+DATABASE\\s+.*)"
-  )
-
-  case object CREATE_TABLE extends SqlCommand(
-    "create table",
-    "(CREATE\\s+TABLE\\s+.*)"
-  )
-
-  case object DROP_TABLE extends SqlCommand(
-    "drop table",
-    "(DROP\\s+TABLE\\s+.*)"
-  )
-
-  case object ALTER_TABLE extends SqlCommand(
-    "alter table",
-    "(ALTER\\s+TABLE\\s+.*)"
-  )
-
-  case object DROP_VIEW extends SqlCommand(
-    "drop view",
-    "DROP\\s+VIEW\\s+(.*)"
-  )
-
-  case object CREATE_VIEW extends SqlCommand(
-    "create view",
-    "(CREATE\\s+VIEW.*)", {
-      case a if a.length < 2 => None
-      case x => Some(Array[String](x(1), x(2)))
-    }
-  )
-
-  case object CREATE_FUNCTION extends SqlCommand(
-    "create function",
-    "(CREATE\\s+FUNCTION\\s+.*)"
-  )
-
-  case object DROP_FUNCTION extends SqlCommand(
-    "drop function",
-    "DROP\\s+FUNCTION\\s+(.*)"
-  )
-
-  case object ALTER_FUNCTION extends SqlCommand(
-    "alter function",
-    "(ALTER\\s+FUNCTION.*)"
-  )
-
-  case object SELECT extends SqlCommand(
-    "select",
-    "(SELECT.*)"
-  )
-
-  case object INSERT_INTO extends SqlCommand(
-    "insert into",
-    "(INSERT\\s+INTO.*)"
-  )
-
-  case object INSERT_OVERWRITE extends SqlCommand(
-    "insert overwrite",
-    "(INSERT\\s+OVERWRITE.*)"
+    "explain plan for",
+    "EXPLAIN\\s+PLAN\\s+FOR\\s+(SELECT\\s+.*|INSERT\\s+.*)"
   )
 
   case object SET extends SqlCommand(
     "set",
-    "(\\s+(\\S+)\\s*=(.*))?", {
+    "SET(\\s+(\\S+)\\s*=(.*))?", {
       case a if a.length < 3 => None
-      case a if a(0) == null => Some(new Array[String](0))
-      case x => Some(Array[String](x(1), x(2)))
+      case a if a.head == null => Some(Array[String](a.head))
+      case a => Some(Array[String](a(1), a(2)))
+    }
+  )
+
+  case object RESET extends SqlCommand(
+    "reset",
+    "RESET\\s*(.*)", {
+      case x if x.head.nonEmpty => Some(Array[String](x.head))
+      case _ => Some(Array[String]("ALL"))
     }
   )
 
@@ -297,6 +382,8 @@ case class SqlError(
   //不可见分隔符.
   private[core] val separator = "\001"
 
-  private[core] def toErrorString: String = s"${errorType.errorType}$separator$exception$separator$sql"
+  private[core] def toErrorString: String = {
+    s"${errorType.errorType}$separator$exception$separator$sql"
+  }
 }
 

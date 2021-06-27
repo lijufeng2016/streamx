@@ -18,19 +18,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.streamxhub.streamx.console.base.properties;
 
-import lombok.Data;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import org.junit.Test;
 
-@Data
-@Configuration
-@ConfigurationProperties(prefix = "streamx")
-public class StreamXProperties {
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
-    private ShiroProperties shiro = new ShiroProperties();
+public class RefreshCacheTest {
 
-    private boolean openAopLog = true;
+    Cache<String, String> caffeine = null;
 
+    @Test
+    public void cache() throws Exception {
+        if (caffeine == null) {
+            caffeine = Caffeine.newBuilder()
+                    .refreshAfterWrite(10, TimeUnit.SECONDS)
+                    .build(this::refresh);
+        }
+        caffeine.put("config", "hadoop");
+        while (true) {
+            System.out.println(caffeine.getIfPresent("config"));
+            Thread.sleep(2000);
+        }
+    }
+
+    public String refresh(String value) {
+        return UUID.randomUUID() + "@" + value;
+    }
 }

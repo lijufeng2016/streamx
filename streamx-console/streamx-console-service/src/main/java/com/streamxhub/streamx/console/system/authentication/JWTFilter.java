@@ -21,9 +21,9 @@
 package com.streamxhub.streamx.console.system.authentication;
 
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
-import com.streamxhub.streamx.console.base.properties.StreamXProperties;
-import com.streamxhub.streamx.console.base.utils.SpringContextUtil;
-import com.streamxhub.streamx.console.base.utils.WebUtil;
+import com.streamxhub.streamx.console.base.properties.ShiroProperties;
+import com.streamxhub.streamx.console.base.util.SpringContextUtils;
+import com.streamxhub.streamx.console.base.util.WebUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.shiro.authz.UnauthorizedException;
@@ -49,14 +49,17 @@ public class JWTFilter extends BasicHttpAuthenticationFilter {
 
     @Override
     protected boolean isAccessAllowed(
-        ServletRequest request, ServletResponse response, Object mappedValue)
-        throws UnauthorizedException {
+            ServletRequest request, ServletResponse response, Object mappedValue)
+            throws UnauthorizedException {
         HttpServletRequest httpServletRequest = (HttpServletRequest) request;
-        StreamXProperties properties = SpringContextUtil.getBean(StreamXProperties.class);
+        ShiroProperties properties = SpringContextUtils.getBean(ShiroProperties.class);
         String[] anonUrl = StringUtils.splitByWholeSeparatorPreserveAllTokens(
-            properties.getShiro().getAnonUrl(), StringPool.COMMA);
+                properties.getAnonUrl(),
+                StringPool.COMMA
+        );
+
         for (String u : anonUrl) {
-            if (pathMatcher.match(u, httpServletRequest.getRequestURI())) {
+            if (pathMatcher.match(u.trim(), httpServletRequest.getRequestURI())) {
                 return true;
             }
         }
@@ -78,7 +81,7 @@ public class JWTFilter extends BasicHttpAuthenticationFilter {
     protected boolean executeLogin(ServletRequest request, ServletResponse response) {
         HttpServletRequest httpServletRequest = (HttpServletRequest) request;
         String token = httpServletRequest.getHeader(TOKEN);
-        JWTToken jwtToken = new JWTToken(WebUtil.decryptToken(token));
+        JWTToken jwtToken = new JWTToken(WebUtils.decryptToken(token));
         try {
             getSubject(request, response).login(jwtToken);
             return true;
@@ -96,11 +99,11 @@ public class JWTFilter extends BasicHttpAuthenticationFilter {
         HttpServletRequest httpServletRequest = (HttpServletRequest) request;
         HttpServletResponse httpServletResponse = (HttpServletResponse) response;
         httpServletResponse.setHeader(
-            "Access-control-Allow-Origin", httpServletRequest.getHeader("Origin"));
+                "Access-control-Allow-Origin", httpServletRequest.getHeader("Origin"));
         httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE");
         httpServletResponse.setHeader(
-            "Access-Control-Allow-Headers",
-            httpServletRequest.getHeader("Access-Control-Request-Headers"));
+                "Access-Control-Allow-Headers",
+                httpServletRequest.getHeader("Access-Control-Request-Headers"));
         // 跨域时会首先发送一个 option请求，这里我们给 option请求直接返回正常状态
         if (httpServletRequest.getMethod().equals(RequestMethod.OPTIONS.name())) {
             httpServletResponse.setStatus(HttpStatus.OK.value());

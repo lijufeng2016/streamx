@@ -81,8 +81,10 @@ import java.util.concurrent.*;
 public class FlinkTrackingTask {
 
     /**
-     * 记录任务是否需要savePoint<br>
-     * 只有在RUNNING状态下才会真正使用,如检查到任务正在运行,且需要savePoint,则设置该任务的状态为"savepoint"<br>
+     * <pre>
+     * 记录任务是否需要savePoint
+     * 只有在RUNNING状态下才会真正使用,如检查到任务正在运行,且需要savePoint,则设置该任务的状态为"savepoint"
+     * </pre>
      */
     private static final Cache<Long, Byte> SAVEPOINT_CACHE = Caffeine.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES).build();
 
@@ -97,9 +99,11 @@ public class FlinkTrackingTask {
     private static final Map<Long, Application> TRACKING_MAP = new ConcurrentHashMap<>(0);
 
     /**
-     * StopFrom: 用来记录任务是从StreamX web管理端停止的还是其他方式停止<br>
-     * 如从StreamX web管理端停止可以知道在停止任务时是否做savepoint,如做了savepoint,则将该savepoint设置为最后有效的savepoint,下次启动时,自动选择从该savepoint<br>
-     * 如:其他方式停止则,无法知道是否savepoint,直接将所有的savepoint设置为过期,任务再次启动时需要手动指定<br>
+     * <pre>
+     * StopFrom: 用来记录任务是从StreamX web管理端停止的还是其他方式停止
+     * 如从StreamX web管理端停止可以知道在停止任务时是否做savepoint,如做了savepoint,则将该savepoint设置为最后有效的savepoint,下次启动时,自动选择从该savepoint
+     * 如:其他方式停止则,无法知道是否savepoint,直接将所有的savepoint设置为过期,任务再次启动时需要手动指定
+     * </pre>
      */
     private static final Map<Long, StopFrom> STOP_FROM_MAP = new ConcurrentHashMap<>(0);
 
@@ -164,17 +168,17 @@ public class FlinkTrackingTask {
     @Scheduled(fixedDelay = 1000)
     public void execute() {
         // 正常5秒钟获取一次信息
-        long track_interval = 1000L * 5;
+        long trackInterval = 1000L * 5;
         //10秒之内
-        long option_interval = 1000L * 10;
+        long optionInterval = 1000L * 10;
 
         //1) 项目刚启动第一次执行,或者前端正在操作...(启动,停止)需要立即返回状态信息.
         if (lastTrackTime == null || !OPTIONING.isEmpty()) {
             tracking();
-        } else if (System.currentTimeMillis() - lastOptionTime <= option_interval) {
+        } else if (System.currentTimeMillis() - lastOptionTime <= optionInterval) {
             //2) 如果在管理端正在操作时间的10秒中之内(每秒执行一次)
             tracking();
-        } else if (System.currentTimeMillis() - lastTrackTime >= track_interval) {
+        } else if (System.currentTimeMillis() - lastTrackTime >= trackInterval) {
             //3) 正常信息获取,判断本次时间和上次时间是否间隔5秒(正常监控信息获取,每5秒一次)
             tracking();
         }
@@ -337,7 +341,7 @@ public class FlinkTrackingTask {
                             savePoint.setAppId(application.getId());
                             savePoint.setLatest(true);
                             savePoint.setType(checkPoint.getCheckPointType().get());
-                            savePoint.setPath(checkPoint.getPath());
+                            savePoint.setPath(checkPoint.getExternalPath());
                             savePoint.setTriggerTime(new Date(checkPoint.getTriggerTimestamp()));
                             savePoint.setCreateTime(new Date());
                             savePointService.save(savePoint);
